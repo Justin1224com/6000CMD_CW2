@@ -1,6 +1,5 @@
-# MediVault — Full-Stack Secure Healthcare Portal (INT6005CEM Security)
+# MediVault — Full-Stack Secure Healthcare Portal (6000CMD Security)
 
-This is a **100% real, working full-stack web application** engineered for **INT6005CEM Security**.
 It includes:
 1. **Real Backend Server (`backend/server.js`)**:
    - **Express.js** with **Helmet** (`Strict-Transport-Security`, `Content-Security-Policy`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`).
@@ -16,25 +15,23 @@ It includes:
    - Connects to the real Express backend API (`http://localhost:5000/api`) with automatic fallback to the built-in Web Crypto API engine if run standalone.
    - Interactive **Patient Portal**, **Doctor AES-256-GCM E-Prescription Console**, **Admin SIEM Security Audit Dashboard**, and **Live Vulnerability & Tamper Testing Suite**.
 
----
-
 ## Quick Start (Run in 2 Minutes)
 
-### Option A: Run Both Backend & Frontend Together
+Run Both Backend & Frontend Together
 Open **Terminal 1 (Backend API Server)**:
-```bash
+
 cd backend
 npm install
 npm start
-```
+
 The secure backend server will start on **`http://localhost:5000`** and generate `backend/database.json` with real Bcrypt hashes and AES-256-GCM encrypted records.
 
 Open **Terminal 2 (React Frontend)**:
-```bash
+
 cd frontend
 npm install
 npm run dev
-```
+
 Open **`http://localhost:5173`** in your browser!
 
 ---

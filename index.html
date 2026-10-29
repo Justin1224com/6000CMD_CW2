@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <title>MediVault — Secure Healthcare Portal (Firebase Auth + AES-256-GCM)</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Official Google Firebase CDN (Zero node_modules required!) -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand-box">
+        <div class="shield-logo">MV</div>
+        <div>
+          <div class="brand-title">
+            MediVault
+            <span class="security-pill">TLS 1.3 • AES-256-GCM • RBAC</span>
+            <span class="firebase-badge">🔥 Firebase Auth &amp; Firestore</span>
+          </div>
+          <div class="brand-subtitle">
+            Secure Healthcare Appointment, E-Prescription &amp; Medical Records System
+          </div>
+        </div>
+      </div>
+
+      <!-- Guest Navigation Buttons -->
+      <div id="guest-nav" class="nav-actions">
+        <button id="btn-open-firebase-cfg" class="btn btn-secondary" style="font-size: 12px; border-color: #f59e0b; color: #fcd34d;">
+          🔥 Connect Your Firebase Config
+        </button>
+        <button id="btn-go-login" class="btn btn-primary">Sign In</button>
+        <button id="btn-go-register" class="btn btn-secondary">Create Account</button>
+      </div>
+
+      <!-- Authenticated Session Bar -->
+      <div id="user-nav" class="nav-actions hidden">
+        <div style="text-align: right;">
+          <div style="font-size: 13.5px; font-weight: 700;">
+            <span id="nav-user-name">User</span>
+            <span id="nav-user-role" class="badge badge-indigo" style="margin-left: 6px;">ROLE</span>
+          </div>
+          <div id="nav-user-email" style="font-size: 11.5px; color: var(--text-secondary);"></div>
+        </div>
+        <div class="badge badge-amber" style="padding: 6px 10px; font-size: 12px;">
+          Auto-Logout: <span id="idle-timer-display">3:00</span>
+        </div>
+        <button id="btn-logout" class="btn btn-danger">Sign Out</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Application Container -->
+  <main class="main-container">
+    <!-- Firebase Connection Banner -->
+    <div id="firebase-status-banner" class="gateway-banner">
+      <div>
+        <strong id="fb-status-title">✓ Connected to Firebase Project (cmd-cw2):</strong>
+        <span id="fb-status-desc">Your Firebase config (cmd-cw2.firebaseapp.com) is pre-loaded and active! Real Email Verification and Phone SMS OTP are ready.</span>
+      </div>
+      <button id="btn-banner-fb-setup" class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">Paste Firebase Config</button>
+    </div>
+
+    <!-- Dynamic Alert Notification Banner -->
+    <div id="alert-banner" class="alert-box hidden">
+      <div>
+        <strong id="alert-title" style="display:block; margin-bottom: 2px;"></strong>
+        <span id="alert-text"></span>
+      </div>
+      <button id="alert-close" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;">Dismiss</button>
+    </div>
+
+    <!-- ==================================================================
+         VIEW 1: LOGIN SCREEN
+    ================================================================== -->
+    <section id="view-login" class="card card-narrow">
+      <h1 style="font-size: 20px; font-weight: 700; margin-bottom: 4px;">Sign In to MediVault</h1>
+      <p style="font-size: 12.5px; color: var(--text-secondary); margin-bottom: 18px;">
+        Protected by Firebase Auth, Bcrypt (Cost 12), Anti-Enumeration Error Masking &amp; Email Verification.
+      </p>
+
+      <form id="form-login">
+        <div class="form-group">
+          <label class="form-label" for="login-email">Registered Email Address</label>
+          <input id="login-email" type="email" class="form-input" placeholder="your_email@gmail.com" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="login-password">Password</label>
+          <input id="login-password" type="password" class="form-input" placeholder="Enter your password" required />
+        </div>
+
+        <button type="submit" id="btn-login-submit" class="btn btn-primary btn-block">Sign In</button>
+      </form>
+
+      <div style="margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--border-color); font-size: 12px; color: var(--text-secondary);">
+        <strong style="color: #e5e7eb; display:block; margin-bottom: 6px;">Default Role Accounts (Or Register Your Own Real Email/Phone):</strong>
+        <div>• <strong>Patient:</strong> <code class="mono">patient@student.inti.edu.my</code> / <code class="mono">Patient@12345!</code></div>
+        <div>• <strong>Doctor:</strong> <code class="mono">doctor@inti.edu.my</code> / <code class="mono">Doctor@12345!</code></div>
+        <div>• <strong>Admin:</strong> <code class="mono">admin@inti.edu.my</code> / <code class="mono">Admin@12345!</code></div>
+      </div>
+    </section>
+
+    <!-- ==================================================================
+         VIEW 2: REGISTRATION SCREEN (Firebase createUserWithEmailAndPassword + sendEmailVerification)
+    ================================================================== -->
+    <section id="view-register" class="card card-medium hidden">
+      <h1 style="font-size: 20px; font-weight: 700; margin-bottom: 4px;">Create a Patient Account</h1>
+      <p style="font-size: 12.5px; color: var(--text-secondary); margin-bottom: 20px;">
+        Uses <code class="mono">firebase.auth().createUserWithEmailAndPassword()</code> &amp; <code class="mono">sendEmailVerification()</code>. No dashes (`-`) needed for Phone or IC!
+      </p>
+
+      <form id="form-register">
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="reg-fullname">Full Name</label>
+            <input id="reg-fullname" type="text" class="form-input" placeholder="e.g. Wong Zi Hao" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="reg-username">Username</label>
+            <input id="reg-username" type="text" class="form-input" placeholder="e.g. zihao" required />
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="form-group">
+            <label class="form-label" for="reg-email">Your Real Email Address</label>
+            <input id="reg-email" type="email" class="form-input" placeholder="your_real_email@gmail.com" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="reg-phone">Phone Number (Plain digits)</label>
+            <input id="reg-phone" type="text" class="form-input" placeholder="0124773780" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="reg-nric">12-Digit IC / NRIC (Plain digits)</label>
+            <input id="reg-nric" type="text" class="form-input" placeholder="020415075431" required />
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="reg-password">Password</label>
+            <input id="reg-password" type="password" class="form-input" placeholder="12+ chars, upper, lower, digit, symbol" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="reg-confirm">Confirm Password</label>
+            <input id="reg-confirm" type="password" class="form-input" placeholder="Re-enter password" required />
+          </div>
+        </div>
+
+        <!-- Real-Time Password Entropy Meter -->
+        <div class="entropy-box">
+          <div style="display:flex; justify-content:space-between; font-size: 12px;">
+            <span>Password Complexity Score:</span>
+            <strong id="entropy-score-text" style="color: var(--accent-amber);">0%</strong>
+          </div>
+          <div class="progress-track">
+            <div id="entropy-bar" class="progress-fill" style="width: 0%; background: var(--accent-amber);"></div>
+          </div>
+          <div id="entropy-feedback" style="font-size: 11px; color: #fca5a5; margin-top: 6px;">
+            Required: 12+ characters • Upper &amp; lowercase • Number • Special symbol
+          </div>
+        </div>
+
+        <!-- PDPA 2010 Consent -->
+        <div class="entropy-box" style="display:flex; align-items:flex-start; gap: 10px; font-size: 12.5px;">
+          <input id="reg-pdpa" type="checkbox" style="margin-top: 3px; width: 16px; height: 16px;" />
+          <label for="reg-pdpa">
+            I have read and agree to the
+            <a href="#" id="link-open-pdpa" style="color: var(--accent-green); font-weight: 700;">MediVault PDPA 2010 Data Privacy Policy</a>
+            and consent to the encrypted processing of my medical data.
+          </label>
+        </div>
+
+        <button type="submit" id="btn-reg-submit" class="btn btn-primary btn-block">Sign Up &amp; Send Firebase Verification Email</button>
+      </form>
+    </section>
+
+    <!-- ==================================================================
+         VIEW 3: FIREBASE EMAIL VERIFICATION STEP (firebaseUser.sendEmailVerification)
+    ================================================================== -->
+    <section id="view-verify-email" class="card card-narrow hidden" style="text-align: center;">
+      <h2 style="font-size: 19px; font-weight: 700; margin-bottom: 6px;">Verify Your Email in Your Inbox</h2>
+      <p style="font-size: 12.5px; color: var(--text-secondary); margin-bottom: 16px;">
+        Firebase Authentication has sent a verification email link from <code class="mono">noreply@your-project.firebaseapp.com</code> to:<br/>
+        <strong id="verify-email-target" style="color: var(--accent-green); font-size: 14px;"></strong>
+      </p>
+      <div class="record-item" style="text-align: left; font-size: 12.5px; line-height: 1.6;">
+        <div><strong>Step 1:</strong> Open your real email inbox (check Spam/Junk if needed) and click the Firebase verification link: <code class="mono" style="color: #6ee7b7;">https://.../auth/action?mode=verifyEmail...</code></div>
+        <div style="margin-top: 6px;"><strong>Step 2:</strong> After clicking the link in your email, click the button below so MediVault checks <code class="mono">firebaseUser.reload()</code> &amp; <code class="mono">firebaseUser.emailVerified</code>:</div>
+      </div>
+
+      <button id="btn-check-firebase-email" class="btn btn-primary btn-block" style="margin-top: 12px; margin-bottom: 10px;">
+        I Have Clicked the Link in My Email — Check Status
+      </button>
+      <button id="btn-resend-firebase-email" class="btn btn-secondary btn-block">
+        Resend Firebase Verification Email
+      </button>
+    </section>
+
+    <!-- ==================================================================
+         PORTAL 1: PATIENT DASHBOARD (RBAC role === 'patient')
+    ================================================================== -->
+    <section id="view-patient" class="hidden">
+      <div class="sub-nav">
+        <button class="btn btn-primary" data-pat-tab="pat-rx">My Encrypted E-Prescriptions</button>
+        <button class="btn btn-secondary" data-pat-tab="pat-appt">Book &amp; View Appointments</button>
+        <button class="btn btn-secondary" data-pat-tab="pat-profile">My Security Profile</button>
+      </div>
+
+      <div id="pat-rx" class="card">
+        <h2 style="font-size: 17px; font-weight: 700; margin-bottom: 4px;">My E-Prescriptions (AES-256-GCM Encrypted)</h2>
+        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">
+          Principle of Least Privilege (PoLP): Only you and your prescribing doctor can decrypt your records.
+        </p>
+        <div id="patient-rx-list"></div>
+      </div>
+
+      <div id="pat-appt" class="grid-2 hidden">
+        <div class="card">
+          <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 14px;">Book a Clinical Consultation</h3>
+          <form id="form-book-appt">
+            <div class="form-group">
+              <label class="form-label" for="appt-doctor">Select Doctor</label>
+              <select id="appt-doctor" class="form-select"></select>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label" for="appt-date">Date</label>
+                <input id="appt-date" type="date" class="form-input" value="2026-11-05" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="appt-time">Time</label>
+                <input id="appt-time" type="time" class="form-input" value="10:30" required />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="appt-symptoms">Symptoms / Reason for Visit (XSS Sanitized)</label>
+              <textarea id="appt-symptoms" rows="3" class="form-textarea" placeholder="Describe your symptoms..." required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Submit Appointment</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 14px;">My Scheduled Appointments</h3>
+          <div id="patient-appt-list"></div>
+        </div>
+      </div>
+
+      <div id="pat-profile" class="card card-medium hidden">
+        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 12px;">My Security &amp; PDPA 2010 Profile</h3>
+        <div id="patient-profile-details" style="font-size: 13px; line-height: 1.9;"></div>
+      </div>
+    </section>
+
+    <!-- ==================================================================
+         PORTAL 2: DOCTOR CLINICAL CONSOLE (RBAC role === 'doctor')
+    ================================================================== -->
+    <section id="view-doctor" class="hidden">
+      <div class="sub-nav">
+        <button class="btn btn-primary" data-doc-tab="doc-issue">Issue Encrypted E-Prescription</button>
+        <button class="btn btn-secondary" data-doc-tab="doc-appts">Assigned Patient Appointments</button>
+        <button class="btn btn-secondary" data-doc-tab="doc-archive">Issued Prescriptions Archive</button>
+      </div>
+
+      <div id="doc-issue" class="card card-medium">
+        <h2 style="font-size: 17px; font-weight: 700; margin-bottom: 4px;">Issue AES-256-GCM Encrypted E-Prescription</h2>
+        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">
+          Encrypts Patient NRIC and medication dosage using a fresh 96-bit random IV and generates a SHA-256 integrity signature.
+        </p>
+        <form id="form-issue-rx">
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label" for="rx-patient">Select Patient</label>
+              <select id="rx-patient" class="form-select"></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="rx-dept">Clinical Department</label>
+              <input id="rx-dept" type="text" class="form-input" value="General Medicine" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="rx-med">Medication Name &amp; Strength</label>
+            <input id="rx-med" type="text" class="form-input" placeholder="e.g. Augmentin 625mg Tablet" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="rx-dosage">Dosage Instructions</label>
+            <input id="rx-dosage" type="text" class="form-input" placeholder="e.g. Take 1 tablet twice daily after food for 7 days" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="rx-notes">Clinical Diagnosis Notes</label>
+            <textarea id="rx-notes" rows="3" class="form-textarea" placeholder="Enter clinical diagnosis..." required></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Encrypt with AES-256-GCM &amp; Issue Prescription</button>
+        </form>
+      </div>
+
+      <div id="doc-appts" class="card hidden">
+        <h2 style="font-size: 17px; font-weight: 700; margin-bottom: 14px;">Patient Consultation Schedule</h2>
+        <div id="doctor-appt-list"></div>
+      </div>
+
+      <div id="doc-archive" class="card hidden">
+        <h2 style="font-size: 17px; font-weight: 700; margin-bottom: 14px;">Issued E-Prescriptions Archive</h2>
+        <div id="doctor-rx-list"></div>
+      </div>
+    </section>
+
+    <!-- ==================================================================
+         PORTAL 3: SECURITY ADMIN & SIEM DASHBOARD (RBAC role === 'admin')
+    ================================================================== -->
+    <section id="view-admin" class="hidden">
+      <div class="sub-nav">
+        <button class="btn btn-primary" data-adm-tab="adm-users">User &amp; RBAC Management</button>
+        <button class="btn btn-secondary" data-adm-tab="adm-siem">SIEM Security Audit Trail</button>
+        <button class="btn btn-secondary" data-adm-tab="adm-db">Encrypted Database Inspector</button>
+      </div>
+
+      <div id="adm-users" class="card">
+        <h2 style="font-size: 17px; font-weight: 700; margin-bottom: 4px;">User Administration, RBAC Role Assignment &amp; Account Lock Control</h2>
+        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">
+          Change user roles (Patient / Doctor / Admin), unlock brute-force locked accounts, or deactivate accounts.
+        </p>
+        <div style="overflow-x: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>UID &amp; Full Name</th>
+                <th>Email &amp; Phone</th>
+                <th>RBAC Role</th>
+                <th>Status &amp; Failed Logins</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="admin-users-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="adm-siem" class="card hidden">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom: 14px;">
+          <div>
+            <h2 style="font-size: 17px; font-weight: 700;">Immutable SIEM Security Audit Logs</h2>
+            <p style="font-size: 12px; color: var(--text-secondary);">Real-time tracking of logins, failed attempts, brute-force lockouts, XSS blocks, and decryptions.</p>
+          </div>
+          <select id="siem-severity-filter" class="form-select" style="width: auto;">
+            <option value="ALL">All Severities</option>
+            <option value="INFO">INFO</option>
+            <option value="WARNING">WARNING</option>
+            <option value="HIGH">HIGH</option>
+            <option value="CRITICAL">CRITICAL</option>
+          </select>
+        </div>
+        <div id="admin-siem-list"></div>
+      </div>
+
+      <div id="adm-db" class="card hidden">
+        <h2 style="font-size: 17px; font-weight: 700; margin-bottom: 10px;">Raw Encrypted Database Inspector (Bcrypt &amp; AES-256-GCM)</h2>
+        <pre id="admin-db-dump" class="ciphertext-box mono" style="white-space: pre-wrap; max-height: 460px; overflow-y: auto; color: #6ee7b7;"></pre>
+      </div>
+    </section>
+  </main>
+
+  <!-- Firebase Project Configuration Modal -->
+  <div id="firebase-cfg-modal" class="modal-backdrop hidden">
+    <div class="modal-card" style="max-width: 640px; max-height: 92vh; overflow-y: auto;">
+      <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">🔥 Connect Your Firebase Project (Same Method as TransportPro)</h3>
+      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
+        Just like the sample coursework report, Firebase Authentication automatically sends real verification emails (<code class="mono">sendEmailVerification()</code>) and real Phone SMS OTP codes (<code class="mono">signInWithPhoneNumber()</code>)!
+      </p>
+
+      <div class="step-box">
+        <strong style="color: #fcd34d;">Quick 3-Step Setup in Firebase Console (<a href="https://console.firebase.google.com/" target="_blank" style="color: var(--accent-green);">console.firebase.google.com</a>):</strong>
+        <ol style="padding-left: 18px; margin-top: 4px;">
+          <li>Open your Firebase project → click <strong>Authentication</strong> → <strong>Sign-in method</strong> → enable <strong>Email/Password</strong> and <strong>Phone</strong>.</li>
+          <li><em>(Tip for Phone SMS OTP without billing):</em> Under <strong>Sign-in method → Phone → Phone numbers for testing</strong>, you can also add your phone number (e.g. <code class="mono">+60124773780</code>) with any 6-digit code (e.g. <code class="mono">773082</code>) if your Firebase project is on the free Spark plan!</li>
+          <li>Go to <strong>Project Settings (⚙️ Gear Icon)</strong> → scroll down to <strong>Your apps (Web `&lt;/&gt;`)</strong> → copy your <code class="mono">firebaseConfig</code> object and paste it below:</li>
+        </ol>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Paste Your entire <code class="mono">firebaseConfig</code> JSON or JS Object Here:</label>
+        <textarea id="fb-config-textarea" rows="7" class="form-textarea mono" style="font-size: 12px;" placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "your-project.firebaseapp.com",
+  "projectId": "your-project",
+  "storageBucket": "your-project.appspot.com",
+  "messagingSenderId": "123456789",
+  "appId": "1:123456789:web:abcdef"
+}'></textarea>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; gap: 10px; margin-top: 14px;">
+        <button type="button" id="btn-clear-fb-cfg" class="btn btn-danger">Disconnect Firebase</button>
+        <div style="display:flex; gap: 8px;">
+          <button type="button" id="btn-close-fb-cfg" class="btn btn-secondary">Close</button>
+          <button type="button" id="btn-save-fb-cfg" class="btn btn-primary">Save &amp; Connect Firebase</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PDPA 2010 Privacy Policy Modal -->
+  <div id="pdpa-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 10px;">MediVault PDPA 2010 Data Privacy Policy</h3>
+      <div style="font-size: 12.5px; color: #d1d5db; max-height: 240px; overflow-y: auto; margin-bottom: 18px;">
+        <p style="margin-bottom: 8px;"><strong>1. Notice &amp; Choice Principle (Malaysia PDPA 2010):</strong> MediVault collects your full name, email, Malaysian phone number, and NRIC strictly for healthcare appointments and issuing encrypted e-prescriptions.</p>
+        <p style="margin-bottom: 8px;"><strong>2. Cryptographic Data Protection:</strong> Passwords are salted and hashed using Bcrypt (Cost 12). Medical diagnoses and NRIC numbers are encrypted at rest using AES-256-GCM with 96-bit random IVs.</p>
+        <p><strong>3. Access Control (RBAC &amp; PoLP):</strong> Only you and your assigned doctor can decrypt your clinical records.</p>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap: 10px;">
+        <button id="btn-close-pdpa" class="btn btn-secondary">Close</button>
+        <button id="btn-accept-pdpa" class="btn btn-primary">I Accept</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

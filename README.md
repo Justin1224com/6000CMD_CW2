@@ -8,18 +8,6 @@
 | **6. Security & Vulnerability Testing** | • Assessed against **OWASP Top 10** using automated DAST/SAST scanners and manual penetration testing | Verified against Broken Access Control (A01), Cryptographic Failures (A02), Injection/XSS (A03), and Auth Failures (A07) |
 
 
-## 📂 Project Structure (Zero `node_modules` Required)
-
-medivault
-├── index.html          # Semantic HTML5 views (Login, Register, Email Verify, Patient, Doctor, Admin)
-├── styles.css          # Pure CSS3 clinical dark theme stylesheet
-├── app.js              # Core Security Engine (Web Crypto AES-256-GCM, Bcrypt-12, Firebase Auth/Firestore, SIEM)
-├── firebase.json       # Network & Host-Level Security Headers (HSTS, CSP, X-Frame-Options)
-├── firestore.rules     # Server-side RBAC & PoLP Database Security Rules
-└── README.md           # Project Documentation
-```
-
----
 
 ## 🚀 How to Run the Application Locally
 

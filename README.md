@@ -1,18 +1,3 @@
-# 🛡️ MediVault — Secure Healthcare Appointment, E-Prescription & Medical Records Portal
-
-[![Course](https://img.shields.io/badge/Module-INT6005CEM%20Security-indigo)](#)
-[![Architecture](https://img.shields.io/badge/Stack-HTML5%20%7C%20CSS3%20%7C%20Vanilla%20JS-emerald)](#)
-[![Backend](https://img.shields.io/badge/Cloud-Firebase%20Auth%20%26%20Firestore-amber)](#)
-[![Encryption](https://img.shields.io/badge/Crypto-AES--256--GCM%20%26%20Bcrypt--12-teal)](#)
-
-**MediVault** is a security-first healthcare web application developed for **INT6005CEM Security (Coursework 2: Secure Application Development)** at INTI International College Penang in collaboration with Coventry University, UK.
-
-The platform enables patients to schedule clinical consultations and decrypt personal E-Prescriptions, empowers licensed physicians to issue tamper-evident digital prescriptions, and provides Security Administrators with a real-time **Security Information and Event Management (SIEM)** audit console.
-
----
-
-## ✨ Key Security Features (Mapped to Coursework Requirements)
-
 | Requirement | Security Feature Implemented | Technical Method / Function in `app.js` |
 | :--- | :--- | :--- |
 | **1. Level of Access** | • 3-Tier Role-Based Access Control (**RBAC**: `patient`, `doctor`, `admin`)<br>• Principle of Least Privilege (**PoLP**) data isolation<br>• **Bcrypt (Cost Factor 12)** salted password hashing (`$2a$12$...`)<br>• **Firebase Email Verification** (`sendEmailVerification()`) | `hashPasswordBcrypt()`, `createUserWithEmailAndPassword()`, `sendEmailVerification()`, `renderPatientPortal()`, `renderDoctorPortal()`, `renderAdminPortal()` |
@@ -22,12 +7,10 @@ The platform enables patients to schedule clinical consultations and decrypt per
 | **5. Logging, Analytics & Advanced Security** | • Append-only **SIEM Security Audit Trail** (`security_audit_logs`)<br>• **Automated Brute-Force Account Lockout** after 5 failed login attempts (`LOCKED_BRUTE_FORCE`)<br>• **3-Minute Idle Session Timeout** (`Auto-Logout: 3:00`)<br>• **SHA-256 Digital Signature** verification on E-Prescriptions | `logSecurityEvent()`, `startIdleSessionMonitor()`, `sha256Hex()` |
 | **6. Security & Vulnerability Testing** | • Assessed against **OWASP Top 10** using automated DAST/SAST scanners and manual penetration testing | Verified against Broken Access Control (A01), Cryptographic Failures (A02), Injection/XSS (A03), and Auth Failures (A07) |
 
----
 
 ## 📂 Project Structure (Zero `node_modules` Required)
 
-```text
-medivault/
+medivault
 ├── index.html          # Semantic HTML5 views (Login, Register, Email Verify, Patient, Doctor, Admin)
 ├── styles.css          # Pure CSS3 clinical dark theme stylesheet
 ├── app.js              # Core Security Engine (Web Crypto AES-256-GCM, Bcrypt-12, Firebase Auth/Firestore, SIEM)

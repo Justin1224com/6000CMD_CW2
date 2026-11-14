@@ -1,49 +1,75 @@
-| Requirement | Security Feature Implemented | Technical Method / Function in `app.js` |
-| :--- | :--- | :--- |
-| **1. Level of Access** | • 3-Tier Role-Based Access Control (**RBAC**: `patient`, `doctor`, `admin`)<br>• Principle of Least Privilege (**PoLP**) data isolation<br>• **Bcrypt (Cost Factor 12)** salted password hashing (`$2a$12$...`)<br>• **Firebase Email Verification** (`sendEmailVerification()`) | `hashPasswordBcrypt()`, `createUserWithEmailAndPassword()`, `sendEmailVerification()`, `renderPatientPortal()`, `renderDoctorPortal()`, `renderAdminPortal()` |
-| **2. Input Validation, Output Encoding & Error Handling** | • Dash-free Malaysian Phone (`+601...`) & 12-digit NRIC RegEx allowlisting<br>• HTML/Script tag stripping & XSS Output Encoding<br>• SQL/NoSQL Injection signature detection<br>• Anti-enumeration error handling with masked Reference IDs (`ERR-XXXXXX`) | `validateAndNormalizePhone()`, `validateAndNormalizeNric()`, `sanitizeHTML()`, `escapeHTML()`, `hasMaliciousPayload()` |
-| **3. Secure Communication** | • Enforced **HTTPS / TLS 1.3** transport encryption to `cmd-cw2.firebaseapp.com`<br>• Host & Network Security Headers (`HSTS`, `CSP`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`)<br>• X.509 Digital Certificate Validation | `firebase.json`, `<meta http-equiv="X-Content-Type-Options" content="nosniff">` |
-| **4. Data Protection & User Education** | • Authenticated **AES-256-GCM** encryption at rest (96-bit random IV + 128-bit GCM Auth Tag) for NRIC & E-Prescriptions<br>• **Malaysia PDPA 2010** Privacy Policy dialog & mandatory consent checkbox<br>• Real-time **Password Complexity & Entropy Meter** (0%–100%) | `encryptAES256GCM()`, `decryptAES256GCM()`, `evaluatePassword()` |
-| **5. Logging, Analytics & Advanced Security** | • Append-only **SIEM Security Audit Trail** (`security_audit_logs`)<br>• **Automated Brute-Force Account Lockout** after 5 failed login attempts (`LOCKED_BRUTE_FORCE`)<br>• **3-Minute Idle Session Timeout** (`Auto-Logout: 3:00`)<br>• **SHA-256 Digital Signature** verification on E-Prescriptions | `logSecurityEvent()`, `startIdleSessionMonitor()`, `sha256Hex()` |
-| **6. Security & Vulnerability Testing** | • Assessed against **OWASP Top 10** using automated DAST/SAST scanners and manual penetration testing | Verified against Broken Access Control (A01), Cryptographic Failures (A02), Injection/XSS (A03), and Auth Failures (A07) |
+# MediVault — Secure Healthcare Portal (CW2)
 
+MediVault is a university coursework application for patient appointments, doctor-issued electronic prescriptions and administrator oversight. The frontend is built with HTML, CSS and vanilla JavaScript; Firebase Authentication and Cloud Firestore provide identity and data services.
 
+**Live website:** https://cmd-cw2.web.app/
+**Source repository:** https://github.com/Justin1224com/6000CMD_CW2
 
-## 🚀 How to Run the Application Locally
+## Main features and security controls
 
-Because **MediVault** is engineered using pure HTML5, CSS3, Vanilla JavaScript, and the official Google Firebase Web SDK via CDN, **no `npm install` or `node_modules` folder is required**.
+- **Patient:** register, verify email, sign in, book appointments and view/decrypt prescriptions associated with the account.
+- **Doctor:** view assigned appointments and issue encrypted prescriptions.
+- **Administrator:** review user accounts, manage permitted roles/account statuses and view selected security audit events.
+- **Access control:** Firestore Security Rules check authentication, email verification, account status, roles and clinical-document ownership. The interface alone is not the security boundary.
+- **Data protection:** the Web Cryptography API uses AES-256-GCM for prescription content and the NRIC field **within medical records**, with random record keys, per-field IVs, AAD and separately restricted `private/key` documents. Profile and appointment fields are **not** additionally encrypted by this application; they depend on Firebase-managed storage protections and authorization rules.
+- **Other measures:** registration consent check, input validation, HTML output encoding, controlled error messages, a browser-based three-minute inactivity logout, selected application audit logs and Firebase Hosting response headers.
 
-### Option 1: Using VS Code Live Server (Recommended for Firebase Auth)
-1. Clone or download this repository:
-   ```bash
-   git clone https://github.com/your-username/medivault-security-cw2.git
-   ```
-2. Open the project folder in **Visual Studio Code**.
-3. Right-click **`index.html`** and select **"Open with Live Server"** (opens at `http://127.0.0.1:5500` or `http://localhost:5500`).
+## Project files
 
-### Option 2: Using Python / Node Local HTTP Server
-```bash
-# Python 3
-python -m http.server 5500
+```text
+README.md
+app.js
+index.html
+styles.css
+firestore.rules
+firebase.json
+public/
+  app.js
+  index.html
+  styles.css
 ```
-Then open **`http://localhost:5500`** in Chrome or Edge.
 
----
+The `public/` copies are the files served by Firebase Hosting. They should match their root-level counterparts. Do **not** commit `.firebase/` caches, real patient data, passwords or test-report exports.
 
-## 🔑 Pre-Seeded Test Accounts (RBAC Demonstration)
+## How to run
 
-You can register your own institutional email (`@student.newinti.edu.my` or `@gmail.com`) to test real **Firebase Email Verification**, or sign in immediately with the pre-seeded RBAC role accounts below:
+1. Open the project folder in VS Code. Run root-level `index.html` with the **Live Server** extension, or visit the live HTTPS website. No application server or `npm install` is required.
+2. Use a Firebase project with **Email/Password Authentication** and Cloud Firestore enabled. The frontend is configured for the coursework project `cmd-cw2`; the project owner must configure authorized authentication domains and publish the appropriate `firestore.rules`. Frontend password-composition checks do **not**, by themselves, prove that an equivalent Firebase server-side password policy is enabled.
+3. Register with an email address you control and **fictional** identity and medical data. Open the verification email, confirm your email, then sign in. Use **Forgot password** for account recovery.
+4. Newly registered accounts start as **Patient**. An authorized Firebase project owner may bootstrap the first Administrator by setting the appropriate `medivault_users/{uid}` role in Firestore. Authorized administrators can subsequently assign Doctor roles through the application.
+5. As Patient, make an appointment. As the assigned Doctor, issue a prescription. The related Patient and Doctor can access/decrypt that record; unauthorized users should receive `permission-denied` on restricted Firestore requests.
 
-| RBAC Role | Email Address | Password | Assigned Privileges (PoLP) |
-| :--- | :--- | :--- | :--- |
-| **Patient** | `patient@student.inti.edu.my` | `Patient@12345!` | Book appointments, decrypt own AES-256-GCM E-Prescriptions, view security profile. |
-| **Doctor** | `doctor@inti.edu.my` | `Doctor@12345!` | View assigned patient consultations, issue AES-256-GCM encrypted & SHA-256 signed E-Prescriptions. |
-| **Security Admin** | `admin@inti.edu.my` | `Admin@12345!` | Manage user roles, unlock brute-force locked accounts, deactivate users, audit SIEM security logs & raw encrypted database. |
+Do not publish working test-account passwords in this README. Firebase project web configuration is not an administrator credential; database access is controlled by Authentication and Firestore Security Rules.
 
----
+## Firebase Hosting deployment
 
-## 🧪 Quick Security Verification Guide
-1. **Test Firebase Email Verification:** Click **Create Account**, enter your real email, phone (`0123456789`), and 12-digit IC (`020415075431`), accept the PDPA policy, and check your email inbox for the verification link from `noreply@cmd-cw2.firebaseapp.com`.
-2. **Test Brute-Force Account Lockout:** Enter an incorrect password 5 times on any account. On the 5th attempt, the account transitions to `LOCKED_BRUTE_FORCE` and logs a `CRITICAL` alert to the Admin SIEM console.
-3. **Test AES-256-GCM Decryption:** Log in as a Patient or Doctor and click **Decrypt AES-256-GCM Record** to verify the 128-bit GCM authentication tag and SHA-256 integrity hash.
-4. **Test XSS Sanitization:** Attempt to submit `<script>alert(1)</script>` in the Appointment Symptoms field; `sanitizeHTML()` strips executable tags and logs a `HIGH` severity `XSS_PAYLOAD_SANITIZED` event.
+Firebase Hosting uses `public/` as configured in `firebase.json`. After confirming the files and project permissions, an authorized project owner can deploy the website with:
+
+```powershell
+npx firebase-tools login
+npx firebase-tools deploy --only hosting --project cmd-cw2
+```
+
+If Firestore Rules have deliberately changed and have been reviewed, deploy them separately with `npx firebase-tools deploy --only firestore:rules --project cmd-cw2`. A GitHub push alone does **not** deploy either Hosting or Firestore Rules.
+
+## Security testing and known limitations
+
+Coursework evaluation included manual authentication and workflow checks (T1–T30); direct Firestore authorization tests for Patient, Doctor and Administrator; function-level AES-GCM tampering and input-validation tests; HTTPS/TLS/response-header inspection; and a mobile-browser deployment smoke test.
+
+An **OWASP ZAP Baseline Scan on 12 November 2026** of the hosted site discovered six URLs and reported **59 PASS checks, nine warning rules and zero FAIL-classified checks**. The warning findings included CSP allowing inline styles and missing Subresource Integrity for external JavaScript dependencies. This was primarily a passive, unauthenticated scan; it does not establish that the application is vulnerability-free. Automated Firebase Emulator rules tests were not completed.
+
+Audit events are partly created by the browser and do not constitute a complete trusted, tamper-proof SIEM. Browser inactivity logout is not a universal Firebase token-expiration policy. This coursework system is not presented as a clinically certified production healthcare service or as proof of full PDPA compliance.
+
+## Development evolution
+
+The final coursework build retains the original three-role clinic interface and clinical workflows while refining the supporting security architecture. The revised codebase includes managed Firebase Authentication, database-enforced Firestore permissions, AES-256-GCM record encryption with randomly generated keys and protected key documents, privacy consent and separated private profiles, restricted application audit records, browser inactivity logout, and verified Firebase Hosting security configuration. The report provides implementation extracts and test evidence. This section describes the **final design**, not a line-by-line Git comparison or exclusive attribution of every code change.
+
+## Team security development responsibilities
+
+| Member | Main development and security workstream | Report section |
+| --- | --- | --- |
+| **Low Justin** | Initial MediVault application development, including the core patient, doctor and administrator interfaces/workflows; authentication, cryptography and input-security workstream (Firebase Authentication, email verification, AES-256-GCM, validation, output encoding and error handling). | **3.1** — Authentication, AES-256-GCM and input security. |
+| **Yew Wen Jun** | Security hardening and system integration; Firestore RBAC and least-privilege authorization, administrator privilege restrictions, privacy consent, separated private profiles and direct authorization testing. | **3.2–3.3** — Data protection, privacy, RBAC and administrator security. |
+| **Tan Yien Win** | Security monitoring, session and deployment-protection workstream; audit logging and analytics, inactivity logout, Firebase Hosting security headers, HTTPS verification and automated-scan analysis. | **3.4–3.5** — Monitoring, session management and HTTPS security. |
+
+The team collaborated on integration, evaluation and documentation. These workstreams indicate principal responsibilities, not exclusive authorship of all code in a section. Each member should be able to explain the changes they personally implemented or tested during the individual viva.

@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
   <title>MediVault — Secure Healthcare Portal (Firebase Auth + AES-256-GCM)</title>
   <link rel="stylesheet" href="styles.css" />
   <!-- Official Google Firebase CDN (Zero node_modules required!) -->
@@ -21,7 +20,7 @@
         <div>
           <div class="brand-title">
             MediVault
-            <span class="security-pill">TLS 1.3 • AES-256-GCM • RBAC</span>
+            <span class="security-pill">HTTPS • AES-256-GCM • RBAC</span>
             <span class="firebase-badge">🔥 Firebase Auth &amp; Firestore</span>
           </div>
           <div class="brand-subtitle">
@@ -51,6 +50,7 @@
         <div class="badge badge-amber" style="padding: 6px 10px; font-size: 12px;">
           Auto-Logout: <span id="idle-timer-display">3:00</span>
         </div>
+        <button id="btn-refresh-clinic" class="btn btn-secondary">Refresh</button>
         <button id="btn-logout" class="btn btn-danger">Sign Out</button>
       </div>
     </div>
@@ -61,8 +61,8 @@
     <!-- Firebase Connection Banner -->
     <div id="firebase-status-banner" class="gateway-banner">
       <div>
-        <strong id="fb-status-title">✓ Connected to Firebase Project (cmd-cw2):</strong>
-        <span id="fb-status-desc">Your Firebase config (cmd-cw2.firebaseapp.com) is pre-loaded and active! Real Email Verification and Phone SMS OTP are ready.</span>
+        <strong id="fb-status-title">Firebase project configuration:</strong>
+        <span id="fb-status-desc">Email/password authentication and database access are checked when you sign in.</span>
       </div>
       <button id="btn-banner-fb-setup" class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">Paste Firebase Config</button>
     </div>
@@ -82,7 +82,7 @@
     <section id="view-login" class="card card-narrow">
       <h1 style="font-size: 20px; font-weight: 700; margin-bottom: 4px;">Sign In to MediVault</h1>
       <p style="font-size: 12.5px; color: var(--text-secondary); margin-bottom: 18px;">
-        Protected by Firebase Auth, Bcrypt (Cost 12), Anti-Enumeration Error Masking &amp; Email Verification.
+        Protected by Firebase Authentication, email verification and database-enforced role permissions.
       </p>
 
       <form id="form-login">
@@ -92,17 +92,17 @@
         </div>
         <div class="form-group">
           <label class="form-label" for="login-password">Password</label>
-          <input id="login-password" type="password" class="form-input" placeholder="Enter your password" required />
+          <input id="login-password" autocomplete="current-password" maxlength="128" type="password" class="form-input" placeholder="Enter your password" required />
         </div>
 
         <button type="submit" id="btn-login-submit" class="btn btn-primary btn-block">Sign In</button>
       </form>
+      <button type="button" id="btn-forgot-password" class="btn btn-secondary btn-block" style="margin-top:10px;">Forgot password</button>
 
       <div style="margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--border-color); font-size: 12px; color: var(--text-secondary);">
-        <strong style="color: #e5e7eb; display:block; margin-bottom: 6px;">Default Role Accounts (Or Register Your Own Real Email/Phone):</strong>
-        <div>• <strong>Patient:</strong> <code class="mono">patient@student.inti.edu.my</code> / <code class="mono">Patient@12345!</code></div>
-        <div>• <strong>Doctor:</strong> <code class="mono">doctor@inti.edu.my</code> / <code class="mono">Doctor@12345!</code></div>
-        <div>• <strong>Admin:</strong> <code class="mono">admin@inti.edu.my</code> / <code class="mono">Admin@12345!</code></div>
+        <strong style="color: #e5e7eb; display:block; margin-bottom: 6px;">Use your own verified account.</strong>
+        <div>New accounts start as patients. The project owner sets up the first administrator, who can assign doctor roles.</div>
+        <div style="margin-top:6px;">Use a unique password, never share verification links, and sign out on shared computers. For coursework testing, enter fictional clinical details and NRIC values.</div>
       </div>
     </section>
 
@@ -119,37 +119,37 @@
         <div class="grid-2">
           <div class="form-group">
             <label class="form-label" for="reg-fullname">Full Name</label>
-            <input id="reg-fullname" type="text" class="form-input" placeholder="e.g. Wong Zi Hao" required />
+            <input id="reg-fullname" maxlength="80" type="text" class="form-input" placeholder="e.g. Wong Zi Hao" required />
           </div>
           <div class="form-group">
             <label class="form-label" for="reg-username">Username</label>
-            <input id="reg-username" type="text" class="form-input" placeholder="e.g. zihao" required />
+            <input id="reg-username" maxlength="40" type="text" class="form-input" placeholder="e.g. zihao" required />
           </div>
         </div>
 
         <div class="grid-3">
           <div class="form-group">
             <label class="form-label" for="reg-email">Your Real Email Address</label>
-            <input id="reg-email" type="email" class="form-input" placeholder="your_real_email@gmail.com" required />
+            <input id="reg-email" maxlength="254" type="email" class="form-input" placeholder="your_real_email@gmail.com" required />
           </div>
           <div class="form-group">
             <label class="form-label" for="reg-phone">Phone Number (Plain digits)</label>
-            <input id="reg-phone" type="text" class="form-input" placeholder="0124773780" required />
+            <input id="reg-phone" maxlength="20" type="text" class="form-input" placeholder="0124773780" required />
           </div>
           <div class="form-group">
             <label class="form-label" for="reg-nric">12-Digit IC / NRIC (Plain digits)</label>
-            <input id="reg-nric" type="text" class="form-input" placeholder="020415075431" required />
+            <input id="reg-nric" maxlength="14" type="text" class="form-input" placeholder="020415075431" required />
           </div>
         </div>
 
         <div class="grid-2">
           <div class="form-group">
             <label class="form-label" for="reg-password">Password</label>
-            <input id="reg-password" type="password" class="form-input" placeholder="12+ chars, upper, lower, digit, symbol" required />
+            <input id="reg-password" autocomplete="new-password" maxlength="128" type="password" class="form-input" placeholder="12+ chars, upper, lower, digit, symbol" required />
           </div>
           <div class="form-group">
             <label class="form-label" for="reg-confirm">Confirm Password</label>
-            <input id="reg-confirm" type="password" class="form-input" placeholder="Re-enter password" required />
+            <input id="reg-confirm" autocomplete="new-password" maxlength="128" type="password" class="form-input" placeholder="Re-enter password" required />
           </div>
         </div>
 
@@ -173,7 +173,7 @@
           <label for="reg-pdpa">
             I have read and agree to the
             <a href="#" id="link-open-pdpa" style="color: var(--accent-green); font-weight: 700;">MediVault PDPA 2010 Data Privacy Policy</a>
-            and consent to the encrypted processing of my medical data.
+            and consent to processing my data for appointments and prescriptions.
           </label>
         </div>
 
@@ -187,7 +187,7 @@
     <section id="view-verify-email" class="card card-narrow hidden" style="text-align: center;">
       <h2 style="font-size: 19px; font-weight: 700; margin-bottom: 6px;">Verify Your Email in Your Inbox</h2>
       <p style="font-size: 12.5px; color: var(--text-secondary); margin-bottom: 16px;">
-        Firebase Authentication has sent a verification email link from <code class="mono">noreply@your-project.firebaseapp.com</code> to:<br/>
+        Verify ownership of this email address using the Firebase verification link:<br/>
         <strong id="verify-email-target" style="color: var(--accent-green); font-size: 14px;"></strong>
       </p>
       <div class="record-item" style="text-align: left; font-size: 12.5px; line-height: 1.6;">
@@ -241,7 +241,7 @@
             </div>
             <div class="form-group">
               <label class="form-label" for="appt-symptoms">Symptoms / Reason for Visit (XSS Sanitized)</label>
-              <textarea id="appt-symptoms" rows="3" class="form-textarea" placeholder="Describe your symptoms..." required></textarea>
+              <textarea id="appt-symptoms" maxlength="2000" rows="3" class="form-textarea" placeholder="Describe your symptoms..." required></textarea>
             </div>
             <button type="submit" class="btn btn-primary btn-block">Submit Appointment</button>
           </form>
@@ -272,7 +272,7 @@
       <div id="doc-issue" class="card card-medium">
         <h2 style="font-size: 17px; font-weight: 700; margin-bottom: 4px;">Issue AES-256-GCM Encrypted E-Prescription</h2>
         <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">
-          Encrypts Patient NRIC and medication dosage using a fresh 96-bit random IV and generates a SHA-256 integrity signature.
+          Encrypts the patient NRIC and prescription with AES-256-GCM, fresh random IVs and an authentication tag. Select a patient who has booked a consultation with you.
         </p>
         <form id="form-issue-rx">
           <div class="grid-2">
@@ -282,20 +282,20 @@
             </div>
             <div class="form-group">
               <label class="form-label" for="rx-dept">Clinical Department</label>
-              <input id="rx-dept" type="text" class="form-input" value="General Medicine" required />
+              <input id="rx-dept" maxlength="80" type="text" class="form-input" value="General Medicine" required />
             </div>
           </div>
           <div class="form-group">
             <label class="form-label" for="rx-med">Medication Name &amp; Strength</label>
-            <input id="rx-med" type="text" class="form-input" placeholder="e.g. Augmentin 625mg Tablet" required />
+            <input id="rx-med" maxlength="200" type="text" class="form-input" placeholder="e.g. Augmentin 625mg Tablet" required />
           </div>
           <div class="form-group">
             <label class="form-label" for="rx-dosage">Dosage Instructions</label>
-            <input id="rx-dosage" type="text" class="form-input" placeholder="e.g. Take 1 tablet twice daily after food for 7 days" required />
+            <input id="rx-dosage" maxlength="500" type="text" class="form-input" placeholder="e.g. Take 1 tablet twice daily after food for 7 days" required />
           </div>
           <div class="form-group">
             <label class="form-label" for="rx-notes">Clinical Diagnosis Notes</label>
-            <textarea id="rx-notes" rows="3" class="form-textarea" placeholder="Enter clinical diagnosis..." required></textarea>
+            <textarea id="rx-notes" maxlength="2000" rows="3" class="form-textarea" placeholder="Enter clinical diagnosis..." required></textarea>
           </div>
           <button type="submit" class="btn btn-primary btn-block">Encrypt with AES-256-GCM &amp; Issue Prescription</button>
         </form>
@@ -325,16 +325,16 @@
       <div id="adm-users" class="card">
         <h2 style="font-size: 17px; font-weight: 700; margin-bottom: 4px;">User Administration, RBAC Role Assignment &amp; Account Lock Control</h2>
         <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">
-          Change user roles (Patient / Doctor / Admin), unlock brute-force locked accounts, or deactivate accounts.
+          Change user roles (Patient / Doctor / Admin), or deactivate and reactivate clinic access. Firebase manages password authentication and abuse protection.
         </p>
         <div style="overflow-x: auto;">
           <table class="data-table">
             <thead>
               <tr>
                 <th>UID &amp; Full Name</th>
-                <th>Email &amp; Phone</th>
+                <th>Email</th>
                 <th>RBAC Role</th>
-                <th>Status &amp; Failed Logins</th>
+                <th>Clinic Access</th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -346,8 +346,8 @@
       <div id="adm-siem" class="card hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom: 14px;">
           <div>
-            <h2 style="font-size: 17px; font-weight: 700;">Immutable SIEM Security Audit Logs</h2>
-            <p style="font-size: 12px; color: var(--text-secondary);">Real-time tracking of logins, failed attempts, brute-force lockouts, XSS blocks, and decryptions.</p>
+            <h2 style="font-size: 17px; font-weight: 700;">Security Audit Logs &amp; Activity Summary</h2>
+            <p style="font-size: 12px; color: var(--text-secondary);">Recent application activity. Logs cannot be changed or deleted through client access. Use Refresh to load the latest events.</p>
           </div>
           <select id="siem-severity-filter" class="form-select" style="width: auto;">
             <option value="ALL">All Severities</option>
@@ -357,11 +357,12 @@
             <option value="CRITICAL">CRITICAL</option>
           </select>
         </div>
+        <div id="admin-log-summary" class="record-item" style="font-size:12px;"></div>
         <div id="admin-siem-list"></div>
       </div>
 
       <div id="adm-db" class="card hidden">
-        <h2 style="font-size: 17px; font-weight: 700; margin-bottom: 10px;">Raw Encrypted Database Inspector (Bcrypt &amp; AES-256-GCM)</h2>
+        <h2 style="font-size: 17px; font-weight: 700; margin-bottom: 10px;">Encrypted Database Inspector (AES-256-GCM)</h2>
         <pre id="admin-db-dump" class="ciphertext-box mono" style="white-space: pre-wrap; max-height: 460px; overflow-y: auto; color: #6ee7b7;"></pre>
       </div>
     </section>
@@ -370,17 +371,17 @@
   <!-- Firebase Project Configuration Modal -->
   <div id="firebase-cfg-modal" class="modal-backdrop hidden">
     <div class="modal-card" style="max-width: 640px; max-height: 92vh; overflow-y: auto;">
-      <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">🔥 Connect Your Firebase Project (Same Method as TransportPro)</h3>
+      <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">Connect Your Firebase Project</h3>
       <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
-        Just like the sample coursework report, Firebase Authentication automatically sends real verification emails (<code class="mono">sendEmailVerification()</code>) and real Phone SMS OTP codes (<code class="mono">signInWithPhoneNumber()</code>)!
+        Use the Firebase web configuration for your group project. Passwords are handled by Firebase Authentication; clinic permissions are enforced by Firestore rules.
       </p>
 
       <div class="step-box">
-        <strong style="color: #fcd34d;">Quick 3-Step Setup in Firebase Console (<a href="https://console.firebase.google.com/" target="_blank" style="color: var(--accent-green);">console.firebase.google.com</a>):</strong>
+        <strong style="color: #fcd34d;">Quick 3-Step Setup in Firebase Console (<a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" style="color: var(--accent-green);">console.firebase.google.com</a>):</strong>
         <ol style="padding-left: 18px; margin-top: 4px;">
-          <li>Open your Firebase project → click <strong>Authentication</strong> → <strong>Sign-in method</strong> → enable <strong>Email/Password</strong> and <strong>Phone</strong>.</li>
-          <li><em>(Tip for Phone SMS OTP without billing):</em> Under <strong>Sign-in method → Phone → Phone numbers for testing</strong>, you can also add your phone number (e.g. <code class="mono">+60124773780</code>) with any 6-digit code (e.g. <code class="mono">773082</code>) if your Firebase project is on the free Spark plan!</li>
-          <li>Go to <strong>Project Settings (⚙️ Gear Icon)</strong> → scroll down to <strong>Your apps (Web `&lt;/&gt;`)</strong> → copy your <code class="mono">firebaseConfig</code> object and paste it below:</li>
+          <li>Enable <strong>Email/Password</strong> in Firebase Authentication. Check authorized domains for your local or hosted website.</li>
+          <li>Create the default <strong>Cloud Firestore</strong> database and publish this project's <strong>firestore.rules</strong> file. See the README for first-admin setup and HTTPS hosting.</li>
+          <li>Copy the web app's <strong>firebaseConfig</strong> from Project Settings and paste it below.</li>
         </ol>
       </div>
 
@@ -412,8 +413,10 @@
       <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 10px;">MediVault PDPA 2010 Data Privacy Policy</h3>
       <div style="font-size: 12.5px; color: #d1d5db; max-height: 240px; overflow-y: auto; margin-bottom: 18px;">
         <p style="margin-bottom: 8px;"><strong>1. Notice &amp; Choice Principle (Malaysia PDPA 2010):</strong> MediVault collects your full name, email, Malaysian phone number, and NRIC strictly for healthcare appointments and issuing encrypted e-prescriptions.</p>
-        <p style="margin-bottom: 8px;"><strong>2. Cryptographic Data Protection:</strong> Passwords are salted and hashed using Bcrypt (Cost 12). Medical diagnoses and NRIC numbers are encrypted at rest using AES-256-GCM with 96-bit random IVs.</p>
-        <p><strong>3. Access Control (RBAC &amp; PoLP):</strong> Only you and your assigned doctor can decrypt your clinical records.</p>
+        <p style="margin-bottom: 8px;"><strong>2. Cryptographic Data Protection:</strong> Firebase Authentication manages your password. Prescriptions and their NRIC fields use AES-256-GCM with random keys and IVs. Personal profiles and appointments are protected by database access rules and Firestore storage encryption; they are not separately encrypted by this application. Prescription keys are kept in separate restricted documents. The Firebase project owner remains a trusted operator.</p>
+        <p><strong>3. Access Control (RBAC &amp; PoLP):</strong> Your clinical records are available to you and the assigned doctor. Clinic administrators manage roles and inspect ciphertext and activity logs.</p>
+        <p style="margin-top:8px;"><strong>4. Choice and retention:</strong> Contact the project administrator to request access, correction or deletion of your test data. Retain coursework data only until marking is complete, then arrange deletion with the project owner.</p>
+        <p style="margin-top:8px;"><strong>5. Safe use:</strong> Use fictional medical and identity data for this coursework. Use a unique password, protect email links, keep your browser updated, and sign out on shared devices.</p>
       </div>
       <div style="display:flex; justify-content:flex-end; gap: 10px;">
         <button id="btn-close-pdpa" class="btn btn-secondary">Close</button>

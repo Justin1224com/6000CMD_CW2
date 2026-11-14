@@ -1,0 +1,96 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function userPath(uid) { return /databases/$(database)/documents/medivault_users/$(uid); }
+    function enabled() {
+      return signedIn() && get(userPath(request.auth.uid)).data.accountStatus == 'ACTIVE';
+    }
+    function verified() { return enabled() && request.auth.token.email_verified == true; }
+    function role(name) { return verified() && get(userPath(request.auth.uid)).data.role == name; }
+    function text(value, max) { return value is string && value.size() > 0 && value.size() <= max && value.matches('[^<>]+'); }
+    function cipher(value, max) { return value is string && value.size() >= 40 && value.size() <= max && value.matches('[A-Za-z0-9+/=]+'); }
+    function key(value) { return value is string && value.matches('[A-Za-z0-9+/]{43}='); }
+    function parties(data) { return data.patientId == request.auth.uid || data.doctorId == request.auth.uid; }
+    function newKeyFor(collection, id) {
+      return key(getAfter(/databases/$(database)/documents/$(collection)/$(id)/private/key).data.key);
+    }
+    match /medivault_users/{uid} {
+      allow get: if signedIn() && (uid == request.auth.uid || role('admin') ||
+        (role('patient') && resource.data.role == 'doctor' && resource.data.accountStatus == 'ACTIVE'));
+      allow list: if role('admin') || (role('patient') && resource.data.role == 'doctor' && resource.data.accountStatus == 'ACTIVE');
+      allow create: if signedIn() && uid == request.auth.uid &&
+        request.resource.data.keys().hasOnly(['fullName','email','role','accountStatus','consentAt']) &&
+        text(request.resource.data.fullName,80) && request.resource.data.email == request.auth.token.email &&
+        request.resource.data.role == 'patient' && request.resource.data.accountStatus == 'ACTIVE' &&
+        request.resource.data.consentAt == request.time &&
+        validProfile(getAfter(/databases/$(database)/documents/medivault_users/$(uid)/private/profile).data);
+      allow update: if role('admin') && uid != request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role','accountStatus']) &&
+        request.resource.data.role in ['patient','doctor','admin'] && request.resource.data.accountStatus in ['ACTIVE','DEACTIVATED'];
+      match /private/profile {
+        allow get: if enabled() && uid == request.auth.uid;
+        allow create: if signedIn() && uid == request.auth.uid && !exists(userPath(uid)) &&
+          validProfile(request.resource.data);
+        match /private/key {
+          allow get: if enabled() && uid == request.auth.uid;
+        }
+      }
+    }
+    match /medivault_appointments/{id} {
+      allow read: if verified() && parties(resource.data);
+      allow create: if role('patient') &&
+        request.resource.data.keys().hasOnly(['patientId','patientName','doctorId','doctorName','startsAt','status','symptoms','nric']) &&
+        request.resource.data.patientId == request.auth.uid &&
+        request.resource.data.patientName == get(userPath(request.auth.uid)).data.fullName &&
+        get(userPath(request.resource.data.doctorId)).data.role == 'doctor' &&
+        get(userPath(request.resource.data.doctorId)).data.accountStatus == 'ACTIVE' &&
+        request.resource.data.doctorName == get(userPath(request.resource.data.doctorId)).data.fullName &&
+        request.resource.data.startsAt is timestamp && request.resource.data.startsAt > request.time &&
+        request.resource.data.status == 'CONFIRMED' && text(request.resource.data.symptoms,2000) &&
+        request.resource.data.nric is string && request.resource.data.nric.matches('[0-9]{12}');
+      match /private/key {
+        allow get: if verified() && parties(get(/databases/$(database)/documents/medivault_appointments/$(id)).data);
+      }
+    }
+    match /medivault_medical_records/{id} {
+      allow read: if verified() && (role('admin') || parties(resource.data));
+      allow create: if role('doctor') && validPrescription(request.resource.data) &&
+        newKeyFor('medivault_medical_records',id);
+      match /private/key {
+        allow get: if verified() && parties(get(/databases/$(database)/documents/medivault_medical_records/$(id)).data);
+        allow create: if role('doctor') && !exists(/databases/$(database)/documents/medivault_medical_records/$(id)) &&
+          getAfter(/databases/$(database)/documents/medivault_medical_records/$(id)).data.doctorId == request.auth.uid &&
+          request.resource.data.keys().hasOnly(['key']) && key(request.resource.data.key);
+      }
+    }
+    function validPrescription(data) {
+      let appointment = get(/databases/$(database)/documents/medivault_appointments/$(data.appointmentId)).data;
+      return data.keys().hasOnly(['appointmentId','patientId','patientName','doctorId','doctorName','department','issuedAt','nricCiphertext','prescriptionCiphertext']) &&
+        appointment.doctorId == request.auth.uid && data.doctorId == request.auth.uid && data.patientId == appointment.patientId &&
+        data.patientName == appointment.patientName && data.doctorName == appointment.doctorName &&
+        get(userPath(data.patientId)).data.accountStatus == 'ACTIVE' && text(data.department,80) && data.issuedAt == request.time &&
+        cipher(data.nricCiphertext,300) && cipher(data.prescriptionCiphertext,16000);
+    }
+    match /medivault_security_audit_logs/{id} {
+      allow read: if role('admin');
+      allow create: if verified() && request.resource.data.keys().hasOnly(['actorId','eventType','target','timestamp']) &&
+        request.resource.data.actorId == request.auth.uid && request.resource.data.timestamp == request.time &&
+        request.resource.data.target is string && request.resource.data.target.size() <= 128 && validEvent(request.resource.data);
+    }
+    function validEvent(data) {
+      return (data.eventType in ['AUTH_LOGIN_SUCCESS','USER_LOGOUT'] && data.target == '') ||
+        (data.eventType in ['PHI_RECORD_DECRYPTED','CRYPTO_FAILURE'] && parties(get(/databases/$(database)/documents/medivault_medical_records/$(data.target)).data)) ||
+        (role('patient') && data.eventType == 'APPOINTMENT_BOOKED' && getAfter(/databases/$(database)/documents/medivault_appointments/$(data.target)).data.patientId == request.auth.uid) ||
+        (role('doctor') && data.eventType == 'E_PRESCRIPTION_ISSUED' && getAfter(/databases/$(database)/documents/medivault_medical_records/$(data.target)).data.doctorId == request.auth.uid) ||
+        (role('admin') && data.eventType == 'ACCOUNT_UPDATED');
+    }
+    function validProfile(data) {
+      return data.keys().hasOnly(['username','phone','nric']) && text(data.username,40) &&
+        data.phone is string && data.phone.matches('[+]601[0-9]{8,9}') &&
+        data.nric is string && data.nric.matches('[0-9]{12}');
+    }
+    // Includes all earlier unrestricted coursework collections; no client updates or deletes elsewhere.
+    match /{document=**} { allow read, write: if false; }
+  }
+}
